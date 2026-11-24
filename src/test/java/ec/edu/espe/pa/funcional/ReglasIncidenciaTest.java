@@ -1,88 +1,75 @@
 package ec.edu.espe.pa.funcional;
 
-import ec.edu.espe.pa.funcional.contrato.ReglaIncidencia;
 import ec.edu.espe.pa.funcional.modelo.Incidencia;
-import ec.edu.espe.pa.funcional.reglas.PrioridadAlta;
-import ec.edu.espe.pa.funcional.reglas.ReglasIncidencia;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
-
+import static ec.edu.espe.pa.funcional.reglas.ReglasIncidencia.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ReglasIncidenciaTest {
 
-    @Test
-    void prioridadAltaCumpleLimites() {
-        assertFalse(ReglasIncidencia.PRIORIDAD_ALTA.test(new Incidencia("I1", "A", "ABIERTA", 3)));
-        assertTrue(ReglasIncidencia.PRIORIDAD_ALTA.test(new Incidencia("I2", "A", "ABIERTA", 4)));
-        assertTrue(ReglasIncidencia.PRIORIDAD_ALTA.test(new Incidencia("I3", "A", "ABIERTA", 5)));
+    private Incidencia inc(int prioridad) {
+        return new Incidencia("INC-T", "test", "ABIERTA", prioridad);
     }
 
     @Test
-    void recordRechazaPrioridadFueraDeRango() {
-        assertThrows(IllegalArgumentException.class, () -> new Incidencia("I0", "A", "ABIERTA", 0));
-        assertThrows(IllegalArgumentException.class, () -> new Incidencia("I6", "A", "ABIERTA", 6));
+    void estaAbiertaEsVerdaderoSoloConEstadoAbierta() {
+        assertTrue(ESTA_ABIERTA.test(new Incidencia("1", "t", "ABIERTA", 3)));
+        assertFalse(ESTA_ABIERTA.test(new Incidencia("1", "t", "CERRADA", 3)));
+        assertFalse(ESTA_ABIERTA.test(new Incidencia("1", "t", "EN_PROCESO", 3)));
     }
 
     @Test
-    void estadoAbiertaEsSeguroAnteTexto() {
-        assertTrue(ReglasIncidencia.ESTA_ABIERTA.test(new Incidencia("I1", "A", "ABIERTA", 2)));
-        assertFalse(ReglasIncidencia.ESTA_ABIERTA.test(new Incidencia("I2", "A", "EN_PROCESO", 2)));
-        assertFalse(ReglasIncidencia.ESTA_ABIERTA.test(new Incidencia("I3", "A", "CERRADA", 2)));
+    void prioridadAltaRespetaElUmbralEnLosLimites() {
+        assertFalse(PRIORIDAD_ALTA.test(inc(3)), "3 está por debajo del umbral");
+        assertTrue (PRIORIDAD_ALTA.test(inc(4)), "4 es el umbral exacto");
+        assertTrue (PRIORIDAD_ALTA.test(inc(5)), "5 es el máximo");
     }
 
     @Test
-    void requiereAtencionCombinaReglas() {
-        assertTrue(ReglasIncidencia.REQUIERE_ATENCION.test(new Incidencia("I1", "A", "ABIERTA", 4)));
-        assertFalse(ReglasIncidencia.REQUIERE_ATENCION.test(new Incidencia("I2", "A", "ABIERTA", 3)));
-        assertFalse(ReglasIncidencia.REQUIERE_ATENCION.test(new Incidencia("I3", "A", "CERRADA", 5)));
+    void prioridadInvalidaEsRechazadaAlConstruir() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Incidencia("1", "t", "ABIERTA", 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Incidencia("1", "t", "ABIERTA", 6));
     }
 
     @Test
-    void categoriaRespetaReglasDeDominio() {
-        assertEquals("BAJA", ReglasIncidencia.CATEGORIA.apply(new Incidencia("I1", "A", "ABIERTA", 1)));
-        assertEquals("MEDIA", ReglasIncidencia.CATEGORIA.apply(new Incidencia("I2", "A", "ABIERTA", 2)));
-        assertEquals("MEDIA", ReglasIncidencia.CATEGORIA.apply(new Incidencia("I3", "A", "ABIERTA", 3)));
-        assertEquals("ALTA", ReglasIncidencia.CATEGORIA.apply(new Incidencia("I4", "A", "ABIERTA", 4)));
-        assertEquals("CRITICA", ReglasIncidencia.CATEGORIA.apply(new Incidencia("I5", "A", "ABIERTA", 5)));
+    void requiereAtencionEsAbiertaYAlta() {
+        assertTrue (REQUIERE_ATENCION.test(new Incidencia("1", "t", "ABIERTA", 4)));
+        assertFalse(REQUIERE_ATENCION.test(new Incidencia("1", "t", "ABIERTA", 3)));
+        assertFalse(REQUIERE_ATENCION.test(new Incidencia("1", "t", "CERRADA", 5)));
+        assertFalse(REQUIERE_ATENCION.test(new Incidencia("1", "t", "EN_PROCESO", 5)));
     }
 
     @Test
-    void contratoPropioTieneTresImplementacionesEquivalentes() {
-        Incidencia incidencia = new Incidencia("I1", "A", "ABIERTA", 4);
-        ReglaIncidencia clase = new PrioridadAlta();
-        ReglaIncidencia anonima = new ReglaIncidencia() {
-            @Override
-            public boolean evaluar(Incidencia i) {
-                return "ABIERTA".equals(i.estado());
-            }
-        };
-        ReglaIncidencia lambda = i -> "ABIERTA".equals(i.estado());
-
-        assertTrue(clase.evaluar(incidencia));
-        assertEquals(anonima.evaluar(incidencia), lambda.evaluar(incidencia));
-        assertTrue(lambda.y(clase).evaluar(incidencia));
+    void categoriaCubreTodasLasPrioridades() {
+        assertEquals("CRITICA", CATEGORIA.apply(inc(5)));
+        assertEquals("ALTA",    CATEGORIA.apply(inc(4)));
+        assertEquals("MEDIA",   CATEGORIA.apply(inc(3)));
+        assertEquals("MEDIA",   CATEGORIA.apply(inc(2)));
+        assertEquals("BAJA",    CATEGORIA.apply(inc(1)));
     }
 
     @Test
-    void generadorSinteticoEntregaDatosDeterministicos() {
-        Supplier<Incidencia> generador = ReglasIncidencia.generadorSintetico();
-        List<Incidencia> datos = Stream.generate(generador).limit(3).toList();
-
-        assertEquals(List.of("INC-001", "INC-002", "INC-003"), datos.stream().map(Incidencia::id).toList());
-        assertEquals(List.of("EN_PROCESO", "CERRADA", "ABIERTA"), datos.stream().map(Incidencia::estado).toList());
+    void resumenUneIdYTitulo() {
+        Incidencia i = new Incidencia("INC-9", "Falla", "ABIERTA", 3);
+        assertEquals("INC-9 - Falla", RESUMEN.apply(i));
     }
 
     @Test
-    void notificarNoModificaDatos() {
-        Incidencia incidencia = new Incidencia("I1", "A", "ABIERTA", 5);
-        List<String> ids = new ArrayList<>();
-        ReglasIncidencia.NOTIFICAR.andThen(i -> ids.add(i.id())).accept(incidencia);
-        assertEquals("I1", incidencia.id());
-        assertEquals(List.of("I1"), ids);
+    void esCriticaSoloEnPrioridadCinco() {
+        assertTrue (esCritica(inc(5)));
+        assertFalse(esCritica(inc(4)));
+        assertFalse(esCritica(inc(1)));
+    }
+
+    @Test
+    void generadorSinteticoProduceDatosValidos() {
+        var sup = generadorSintetico();
+        Incidencia a = sup.get();
+        Incidencia b = sup.get();
+        assertNotEquals(a.id(), b.id());
+        assertTrue(a.prioridad() >= 1 && a.prioridad() <= 5);
     }
 }

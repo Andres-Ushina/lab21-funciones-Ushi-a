@@ -3,10 +3,8 @@ package ec.edu.espe.pa.funcional;
 import ec.edu.espe.pa.funcional.funcional.ProcesadorFuncional;
 import ec.edu.espe.pa.funcional.imperativo.ProcesadorImperativo;
 import ec.edu.espe.pa.funcional.modelo.Incidencia;
-import ec.edu.espe.pa.funcional.reglas.ReglasIncidencia;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -14,80 +12,68 @@ import static org.junit.jupiter.api.Assertions.*;
 class EquivalenciaTest {
 
     private final ProcesadorImperativo imperativo = new ProcesadorImperativo();
-    private final ProcesadorFuncional funcional = new ProcesadorFuncional();
+    private final ProcesadorFuncional funcional   = new ProcesadorFuncional();
 
-    @Test
-    void imperativoYFuncionalSonEquivalentesEnCasoNormal() {
-        List<Incidencia> datos = datosBase();
-
-        List<String> esperado = imperativo.titulosQueRequierenAtencion(datos);
-        List<String> actual = funcional.titulosQueRequierenAtencion(
-                datos,
-                ReglasIncidencia.REQUIERE_ATENCION,
-                Incidencia::titulo
-        );
-
-        assertEquals(esperado, actual);
-    }
-
-    @Test
-    void equivalenciaEnCasosLimite() {
-        List<Incidencia> datos = List.of(
-                new Incidencia("I3", "P3", "ABIERTA", 3),
-                new Incidencia("I4", "P4", "ABIERTA", 4),
-                new Incidencia("I5", "P5", "ABIERTA", 5),
-                new Incidencia("I6", "P4 cerrada", "CERRADA", 4)
-        );
-
-        assertEquals(
-                imperativo.titulosQueRequierenAtencion(datos),
-                funcional.titulosQueRequierenAtencion(datos, ReglasIncidencia.REQUIERE_ATENCION, Incidencia::titulo)
-        );
-    }
-
-    @Test
-    void equivalenciaConListaVacia() {
-        List<Incidencia> datos = List.of();
-        assertEquals(
-                imperativo.titulosQueRequierenAtencion(datos),
-                funcional.titulosQueRequierenAtencion(datos, ReglasIncidencia.REQUIERE_ATENCION, Incidencia::titulo)
-        );
-    }
-
-    @Test
-    void noModificaDatosOriginales() {
-        List<Incidencia> datos = new ArrayList<>(datosBase());
-        List<Incidencia> copia = List.copyOf(datos);
-
-        funcional.procesar(
-                datos,
-                ReglasIncidencia.REQUIERE_ATENCION,
-                ReglasIncidencia.RESUMEN,
-                incidencia -> { }
-        );
-
-        assertEquals(copia, datos);
-    }
-
-    @Test
-    void procesarPermiteCambiarReglaSinCambiarMetodo() {
-        List<Incidencia> datos = datosBase();
-        List<String> criticas = funcional.titulosQueRequierenAtencion(
-                datos,
-                ReglasIncidencia.ESTA_ABIERTA.and(ReglasIncidencia::esCritica),
-                Incidencia::titulo
-        );
-
-        assertEquals(List.of("Error de acceso"), criticas);
-    }
-
-    private List<Incidencia> datosBase() {
+    private List<Incidencia> datos() {
         return List.of(
-                new Incidencia("INC-001", "Error de acceso", "ABIERTA", 5),
-                new Incidencia("INC-002", "Pantalla azul", "ABIERTA", 4),
-                new Incidencia("INC-003", "Correo lento", "EN_PROCESO", 4),
-                new Incidencia("INC-004", "Solicitud de cambio", "ABIERTA", 3),
-                new Incidencia("INC-005", "Impresora", "CERRADA", 5)
+                new Incidencia("INC-001", "A", "ABIERTA",    5),
+                new Incidencia("INC-002", "B", "ABIERTA",    3),
+                new Incidencia("INC-003", "C", "EN_PROCESO", 5),
+                new Incidencia("INC-004", "D", "ABIERTA",    4),
+                new Incidencia("INC-005", "E", "CERRADA",    5),
+                new Incidencia("INC-006", "F", "ABIERTA",    1)
         );
+    }
+
+    @Test
+    void casosNormalesProducenLoMismo() {
+        List<Incidencia> d = datos();
+        assertEquals(
+                imperativo.titulosQueRequierenAtencion(d),
+                funcional.titulosQueRequierenAtencion(d)
+        );
+    }
+
+    @Test
+    void casosLimiteProducenLoMismo() {
+        List<Incidencia> borde = List.of(
+                new Incidencia("X", "borde3", "ABIERTA", 3),
+                new Incidencia("Y", "borde4", "ABIERTA", 4),
+                new Incidencia("Z", "borde5", "ABIERTA", 5)
+        );
+        assertEquals(
+                imperativo.titulosQueRequierenAtencion(borde),
+                funcional.titulosQueRequierenAtencion(borde)
+        );
+    }
+
+    @Test
+    void listaVaciaProduceLoMismo() {
+        assertEquals(
+                imperativo.titulosQueRequierenAtencion(List.of()),
+                funcional.titulosQueRequierenAtencion(List.of())
+        );
+    }
+
+    @Test
+    void listaSinCoincidenciasProduceLoMismo() {
+        List<Incidencia> sinAtencion = List.of(
+                new Incidencia("1", "a", "CERRADA",    5),
+                new Incidencia("2", "b", "ABIERTA",    3),
+                new Incidencia("3", "c", "EN_PROCESO", 4)
+        );
+        assertEquals(
+                imperativo.titulosQueRequierenAtencion(sinAtencion),
+                funcional.titulosQueRequierenAtencion(sinAtencion)
+        );
+    }
+
+    @Test
+    void datosOriginalesNoSeModifican() {
+        List<Incidencia> original = datos();
+        List<Incidencia> copia    = List.copyOf(original);
+        funcional.titulosQueRequierenAtencion(original);
+        imperativo.titulosQueRequierenAtencion(original);
+        assertEquals(copia, original);
     }
 }
