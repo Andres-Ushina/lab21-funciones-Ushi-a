@@ -6,6 +6,7 @@ import java.util.function.*;
 // Imports nuevos para la Fase 3:
 import ec.edu.espe.pa.funcional.contrato.ReglaIncidencia;
 import ec.edu.espe.pa.funcional.reglas.PrioridadAlta;
+import ec.edu.espe.pa.funcional.reglas.ReglasIncidencia;
 
 public class Demostracion {
     public static void main(String[] args) {
@@ -48,5 +49,17 @@ public class Demostracion {
         System.out.println("lambda   = " + abiertaLambda.evaluar(ejemplo));
         System.out.println("requiere = " + requiereAtencion.evaluar(ejemplo));
         System.out.println("predicate= " + comoPredicado.test(ejemplo));
+
+
+        // Puedes agregar al final del main de Demostracion:
+        var sup = ReglasIncidencia.generadorSintetico();
+        for (int i = 0; i < 5; i++) {
+            Incidencia in = sup.get();
+            System.out.println(in.id() + " | " + in.estado() + " | " +
+                    in.prioridad() + " | " + ReglasIncidencia.CATEGORIA.apply(in));
+        }
+
     }
+
+
 }
